@@ -1,0 +1,266 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex) > * { min-width: 0; }
+  :where(p, h1, h2, h3, h4, li, dd, td, th, .badge) { overflow-wrap: anywhere; }
+  :where(img, svg) { max-width: 100%; height: auto; }
+  .rtl { direction: rtl; text-align: right; font-family: system-ui, "Segoe UI", Arial, sans-serif; }
+  .note-card pre { white-space: pre-wrap; }
+</style>
+
+<div data-theme="luxury" class="min-h-screen bg-base-200 text-base-content">
+<div class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
+  <!-- HEADER -->
+  <header class="space-y-3">
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="badge badge-primary">Wayfinder · issue #4</span>
+      <span class="badge badge-outline">Prototype · HITL</span>
+      <span class="badge badge-ghost">React & decide</span>
+    </div>
+    <h1 class="text-3xl font-bold">Curation job — trigger, host, model & algorithm</h1>
+    <p class="text-base-content/70 max-w-3xl">
+      The scheduled job that reads <code class="text-primary">raw/</code> (the truth), derives
+      <code class="text-primary">notes/</code> + <code class="text-primary">MEMORY.md</code>, and commits+pushes.
+      Below is a <strong>cheap concrete artifact to react to</strong> — the prompt, one worked before/after,
+      and a host stub. Charting's lean is the <em>starting point</em> for your reaction, not a verdict.
+      Full artifact in <a class="link link-primary" href="https://github.com/nadav-galili/idan-hermes/pull/7" target="_blank">PR #7</a>.
+    </p>
+  </header>
+
+  <!-- THE WORKED EXAMPLE -->
+  <section class="space-y-4">
+    <h2 class="text-2xl font-semibold">The algorithm, shown — one day of raw → notes</h2>
+    <p class="text-base-content/70">A synthetic Hebrew day-file goes in. The model decides what's durable (no inline pre-filter), merges into existing notes, dedups, links, and rewrites the index.</p>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <!-- RAW IN -->
+      <div class="card card-border bg-base-100">
+        <div class="card-body">
+          <h3 class="card-title text-lg">IN · <code>raw/2026-07-13.jsonl</code></h3>
+          <ul class="space-y-2 text-sm">
+            <li><span class="badge badge-success badge-sm">keep</span> <span class="rtl inline-block">#a1 הולך לחדר כושר א׳/ג׳/ה׳ בבוקר</span></li>
+            <li><span class="badge badge-error badge-sm">drop</span> <span class="rtl inline-block">#a3 מה השעה של הפגישה עם רועי? (לוגיסטיקה חד-פעמית)</span></li>
+            <li><span class="badge badge-success badge-sm">keep</span> <span class="rtl inline-block">#a5 רקס אוכל רק רויאל קנין, אחרת בעיות בטן</span></li>
+            <li><span class="badge badge-success badge-sm">keep</span> <span class="rtl inline-block">#a7 עובר לעבודה מהבית בימי שישי מהחודש הבא</span></li>
+            <li><span class="badge badge-success badge-sm">keep</span> <span class="rtl inline-block">#a8 רועי = החבר הכי טוב מהצבא</span></li>
+            <li><span class="badge badge-error badge-sm">drop</span> <span class="rtl inline-block">#a2/#a6 אישורים · #a9 לילה טוב</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- NOTES OUT -->
+      <div class="card card-border bg-base-100">
+        <div class="card-body">
+          <h3 class="card-title text-lg">OUT · <code>notes/</code></h3>
+          <ul class="space-y-1 text-sm">
+            <li><span class="badge badge-warning badge-sm">merge</span> <code>people/idan.md</code> — gym+wfh+roey+rex links folded in, old source id kept</li>
+            <li><span class="badge badge-info badge-sm">new</span> <code>people/roey.md</code></li>
+            <li><span class="badge badge-info badge-sm">new</span> <code>routines/gym.md</code></li>
+            <li><span class="badge badge-info badge-sm">new</span> <code>facts/dog-rex.md</code></li>
+            <li><span class="badge badge-info badge-sm">new</span> <code>decisions/wfh-fridays.md</code></li>
+          </ul>
+          <div class="divider my-1"></div>
+          <p class="text-xs text-base-content/60">Every note carries <code>source: raw/2026-07-13.jsonl#id</code> provenance and <code>[[wikilinks]]</code> across entities.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEMORY.md diff -->
+    <div class="card card-border bg-base-100">
+      <div class="card-body">
+        <h3 class="card-title text-lg"><code>MEMORY.md</code> — the index delta (this is the "what changed" signal)</h3>
+        <div id="memdiff"></div>
+      </div>
+    </div>
+
+    <!-- one sample note -->
+    <div class="card card-border bg-base-100 note-card">
+      <div class="card-body">
+        <h3 class="card-title text-lg">Sample derived note · <code>facts/dog-rex.md</code></h3>
+        <pre class="rtl bg-base-200 rounded-lg p-3 text-sm">---
+slug: dog-rex
+folder: facts
+source: raw/2026-07-13.jsonl#a5
+---
+
+# רקס (הכלב)
+
+הכלב של [[idan]]. אוכל רק אוכל של המותג רויאל קנין
+(Royal Canin) — אחרת יש לו בעיות בבטן.</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- THE FOUR DECISIONS -->
+  <section class="space-y-4">
+    <h2 class="text-2xl font-semibold">Your four decisions</h2>
+    <p class="text-base-content/70">Pick per question and queue it, or just annotate any card. Nothing sends until you press Send to Agent.</p>
+
+    <!-- D1 model -->
+    <form class="card card-border bg-base-100" data-lavish-question="model"
+      onsubmit="event.preventDefault(); const v=new FormData(event.currentTarget).get('model'); if(v) window.lavish.queuePrompt('Decision 3 (model): use '+v, {tag:'choice', text:'Model → '+v, element:event.currentTarget, data:{question:'model', answer:v}});">
+      <div class="card-body">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <h3 class="card-title">3 · Which model runs the derive step?</h3>
+          <span class="badge badge-warning">charting: "one we trust" (undecided)</span>
+        </div>
+        <p class="text-sm text-base-content/60">Graphify-style curation over Hebrew + careful merge → leans frontier, not cheap.</p>
+        <div class="flex flex-col gap-2 mt-2">
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="model" value="Claude API (Opus/Sonnet)" class="radio radio-primary"> Claude API (Opus/Sonnet)</label>
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="model" value="existing OpenRouter key" class="radio radio-primary"> Existing OpenRouter key (reuse Hermes' prepaid ceiling)</label>
+        </div>
+        <div class="card-actions justify-end mt-2"><button type="submit" class="btn btn-primary btn-sm">Queue this answer</button></div>
+      </div>
+    </form>
+
+    <!-- D2 host -->
+    <form class="card card-border bg-base-100" data-lavish-question="host"
+      onsubmit="event.preventDefault(); const v=new FormData(event.currentTarget).get('host'); if(v) window.lavish.queuePrompt('Decision 1 (host): run it as '+v, {tag:'choice', text:'Host → '+v, element:event.currentTarget, data:{question:'host', answer:v}});">
+      <div class="card-body">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <h3 class="card-title">1 · Where does it run?</h3>
+          <span class="badge badge-warning">charting: standalone, not in Hermes</span>
+        </div>
+        <p class="text-sm text-base-content/60">Same clone→derive→commit→push script either way; only auth + trigger differ.</p>
+        <div class="flex flex-col gap-2 mt-2">
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="host" value="VPS cron" class="radio radio-primary"> VPS cron on the Hostinger box (uses box deploy key)</label>
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="host" value="/schedule cloud agent" class="radio radio-primary"> Claude Code <code>/schedule</code> agent against a clone (own write auth — overlaps #6)</label>
+        </div>
+        <div class="card-actions justify-end mt-2"><button type="submit" class="btn btn-primary btn-sm">Queue this answer</button></div>
+      </div>
+    </form>
+
+    <!-- D3 cadence -->
+    <form class="card card-border bg-base-100" data-lavish-question="cadence"
+      onsubmit="event.preventDefault(); const v=new FormData(event.currentTarget).get('cadence'); if(v) window.lavish.queuePrompt('Decision 2 (cadence): '+v, {tag:'choice', text:'Cadence → '+v, element:event.currentTarget, data:{question:'cadence', answer:v}});">
+      <div class="card-body">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <h3 class="card-title">2 · How often does it run?</h3>
+          <span class="badge badge-warning">charting: batched daily</span>
+        </div>
+        <p class="text-sm text-base-content/60">Daily keeps notes ~24h stale. On-demand ("hey, remember this") could coexist as a second trigger.</p>
+        <div class="flex flex-col gap-2 mt-2">
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="cadence" value="daily only" class="radio radio-primary"> Daily only</label>
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="cadence" value="daily + on-demand" class="radio radio-primary"> Daily + on-demand "remember this" trigger</label>
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="cadence" value="per-session" class="radio radio-primary"> Per-session (freshest, re-derives constantly)</label>
+        </div>
+        <div class="card-actions justify-end mt-2"><button type="submit" class="btn btn-primary btn-sm">Queue this answer</button></div>
+      </div>
+    </form>
+
+    <!-- D4 merge -->
+    <form class="card card-border bg-base-100" data-lavish-question="merge"
+      onsubmit="event.preventDefault(); const v=new FormData(event.currentTarget).get('merge'); if(v) window.lavish.queuePrompt('Decision 4 (merge/idempotency): '+v, {tag:'choice', text:'Merge → '+v, element:event.currentTarget, data:{question:'merge', answer:v}});">
+      <div class="card-body">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <h3 class="card-title">4 · Merge model (idempotency)</h3>
+          <span class="badge badge-warning">charting: regenerate whole note</span>
+        </div>
+        <p class="text-sm text-base-content/60">If the job re-runs on the same day-file, it must converge, not double-write.</p>
+        <div class="flex flex-col gap-2 mt-2">
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="merge" value="regenerate whole note from all sources" class="radio radio-primary"> Regenerate the whole note from (current note + new raw) — converges on re-run</label>
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="merge" value="append delta only" class="radio radio-primary"> Append only the delta — cheaper, risks drift/dupes</label>
+        </div>
+        <div class="card-actions justify-end mt-2"><button type="submit" class="btn btn-primary btn-sm">Queue this answer</button></div>
+      </div>
+    </form>
+  </section>
+
+  <!-- RECONCILIATION + MERGE RECOMMENDATION -->
+  <section class="space-y-4">
+    <h2 class="text-2xl font-semibold">Your answers → and the two things to settle</h2>
+
+    <div class="overflow-x-auto">
+      <table class="table table-zebra bg-base-100">
+        <thead><tr><th>Decision</th><th>You chose</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Model</td><td>Existing OpenRouter key</td><td><span class="badge badge-success">settled</span></td></tr>
+          <tr><td>Host</td><td>Run on the Hermes box (its cron/infra), not a cloud agent</td><td><span class="badge badge-success">settled</span></td></tr>
+          <tr><td>Cadence</td><td>Per-session</td><td><span class="badge badge-warning">tension ↓</span></td></tr>
+          <tr><td>Merge</td><td>Asked for best practice</td><td><span class="badge badge-info">recommendation ↓</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- tension -->
+    <div role="alert" class="alert alert-warning">
+      <div>
+        <strong>Cron vs per-session don't quite fit together.</strong>
+        Cron is a <em>timer</em> (e.g. daily). "Per-session" is an <em>event</em> — it fires after a WhatsApp
+        session goes quiet, which cron can't express. Both can still live on the Hermes box. Reconciliation:
+        the job stays a standalone script on the box; Hermes fires it after a session ends (a debounced
+        "session idle" hook) instead of a cron timer. A daily cron can stay as a cheap safety-net sweep.
+      </div>
+    </div>
+
+    <!-- merge recommendation -->
+    <div class="card card-border bg-base-100">
+      <div class="card-body">
+        <h3 class="card-title">Merge — my recommendation: <span class="text-success">regenerate the whole note</span></h3>
+        <p class="text-sm text-base-content/70">Best practice for a derived-from-a-source-of-truth layer (this is a "materialized view" over <code>raw/</code>):</p>
+        <ul class="list-disc pl-6 text-sm space-y-1">
+          <li><strong>Idempotent by construction</strong> — re-running on the same raw yields the same note, so a per-session job that re-touches a note never double-writes or drifts.</li>
+          <li><strong>No dupe accumulation</strong> — append-only slowly grows contradictory/duplicate lines the model then has to fight; regenerate keeps each note clean.</li>
+          <li><strong>Cost is fine at MVP scale</strong> — pass only the <em>touched</em> notes (not all of <code>notes/</code>) as context; notes are small. Revisit only if a note grows large.</li>
+        </ul>
+        <p class="text-sm text-base-content/60 mt-2">Trade-off: slightly more tokens per run than a blind append. Worth it — correctness &gt; a few tokens, and raw is always the safety net.</p>
+      </div>
+    </div>
+
+    <!-- confirm -->
+    <form class="card card-border bg-base-100" data-lavish-question="confirm"
+      onsubmit="event.preventDefault(); const v=new FormData(event.currentTarget).get('confirm'); if(v) window.lavish.queuePrompt('Final confirm: '+v, {tag:'choice', text:'Confirm → '+v, element:event.currentTarget, data:{question:'confirm', answer:v}});">
+      <div class="card-body">
+        <h3 class="card-title">Confirm to record & close #4</h3>
+        <div class="flex flex-col gap-2 mt-1">
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="confirm" value="accept both: session-idle trigger + regenerate-whole merge" class="radio radio-success"> Accept both — session-idle trigger (+ daily safety cron) &amp; regenerate-whole merge</label>
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="confirm" value="keep a plain daily cron instead of session-idle" class="radio radio-primary"> Actually keep it a plain daily cron (drop per-session)</label>
+          <label class="flex items-center gap-3 cursor-pointer"><input type="radio" name="confirm" value="append-delta merge instead" class="radio radio-primary"> Use append-delta merge instead of regenerate-whole</label>
+        </div>
+        <div class="card-actions justify-end mt-2"><button type="submit" class="btn btn-success btn-sm">Confirm &amp; queue</button></div>
+      </div>
+    </form>
+  </section>
+
+  <div role="alert" class="alert alert-info">
+    <span>Pick a confirm option (or annotate), then press <strong>Send to Agent</strong> — I'll record the resolution on #4, close it, and update the map.</span>
+  </div>
+
+</div>
+</div>
+
+<script type="module">
+  import { FileDiff } from "https://esm.sh/@pierre/diffs@1.2.10?bundle";
+  const oldMem = { name: "MEMORY.md (before)", contents:
+`## people
+- [[idan]] — the brother; owner of this brain
+
+## routines
+_(none yet)_
+
+## facts
+_(none yet)_
+
+## decisions
+_(none yet)_
+` };
+  const newMem = { name: "MEMORY.md (after)", contents:
+`## people
+- [[idan]] — the brother; owner of this brain. Hi-tech; gym M/W/Th; WFH Fridays from next month
+- [[roey]] — best friend from the army; they meet every few weeks
+
+## routines
+- [[gym]] — gym Sun/Tue/Thu mornings before work
+
+## facts
+- [[dog-rex]] — the dog; eats only Royal Canin (stomach issues otherwise)
+
+## decisions
+- [[wfh-fridays]] — WFH on Fridays starting next month (traffic)
+` };
+  new FileDiff({ theme: { light: "github-light", dark: "github-dark" }, themeType: "dark", overflow: "wrap", diffStyle: "unified" })
+    .render({ containerWrapper: document.querySelector("#memdiff"), oldFile: oldMem, newFile: newMem });
+</script>

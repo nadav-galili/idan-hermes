@@ -7,10 +7,11 @@
 #   (b) a Claude Code `/schedule` cloud agent against a fresh clone (needs its own write auth — see #6).
 # The clone → derive → commit → push loop below is host-agnostic; only the auth + trigger differ.
 #
-# Decision 2 (CADENCE): charting leans DAILY. Cron line for a VPS, 03:30 Asia/Jerusalem:
+# Decision 2 (CADENCE) — RESOLVED: PER-SESSION, not daily. Hermes fires this script after a
+# conversation goes idle (a debounced "session-idle" hook — see the graduated ticket). A daily
+# cron stays only as a cheap safety-net sweep in case a session-idle fire is missed:
 #   30 3 * * *  /opt/idan-brain/prototype/curation-job/host-stub.sh >> /var/log/idan-curation.log 2>&1
-# Window = "raw day-files newer than the last successful run" (default: yesterday).
-# On-demand ("hey remember this") would be a SECOND entry point calling the same derive step — open Q.
+# Window = "raw day-files newer than the last successful run" (works for both entry points).
 
 set -euo pipefail
 
