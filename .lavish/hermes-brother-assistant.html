@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="luxury">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hermes Assistant for Brother — Plan</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "dark", securityLevel: "strict" });
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex) > * { min-width: 0; }
+  :where(p, h1, h2, h3, h4, li, dd, td, th, .badge) { overflow-wrap: anywhere; }
+  :where(img, svg) { max-width: 100%; height: auto; }
+  .mermaid { display: flex; justify-content: center; }
+  .rtl { direction: rtl; text-align: right; }
+</style>
+</head>
+<body class="bg-base-200 text-base-content">
+<main class="mx-auto max-w-5xl p-5 lg:p-10 space-y-10">
+
+  <!-- HERO -->
+  <header class="space-y-3">
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="badge badge-primary badge-soft">Plan · v1 — design only</span>
+      <span class="badge badge-success">✅ Design complete</span>
+      <span class="badge badge-soft">Build deferred — not yet</span>
+    </div>
+    <h1 class="text-4xl lg:text-5xl font-bold leading-tight">Hermes Personal Assistant<br><span class="text-primary">for your brother</span></h1>
+    <p class="text-base-content/70 max-w-2xl text-lg">A second, fully isolated Hermes agent on your existing Hostinger VPS. One profile. WhatsApp-only. Non-technical owner. Handles email help, calendar, WhatsApp search, and smart reminders — in Hebrew.</p>
+  </header>
+
+  <!-- GOAL / STATE / TARGET -->
+  <section class="grid gap-4 md:grid-cols-3">
+    <div class="card card-border bg-base-100">
+      <div class="card-body">
+        <h2 class="card-title text-base">🎯 Goal</h2>
+        <p class="text-sm text-base-content/70">A daily WhatsApp assistant your brother can rely on with zero technical effort on his side.</p>
+      </div>
+    </div>
+    <div class="card card-border bg-base-100">
+      <div class="card-body">
+        <h2 class="card-title text-base">📍 Current state</h2>
+        <p class="text-sm text-base-content/70">Hermes already runs on the VPS with 2 of your profiles. It has its own Gmail/Calendar and can create calendar invites.</p>
+      </div>
+    </div>
+    <div class="card card-border bg-base-100">
+      <div class="card-body">
+        <h2 class="card-title text-base">✅ Target</h2>
+        <p class="text-sm text-base-content/70">A separate Hermes instance beside it — its own WhatsApp number, its own data, no access to his private accounts.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- VPS CAPACITY -->
+  <section class="card card-border bg-base-100">
+    <div class="card-body">
+      <h2 class="card-title">🖥️ The box can take it — KVM 2</h2>
+      <div class="overflow-x-auto mt-2">
+        <div class="stats stats-vertical lg:stats-horizontal bg-base-200">
+          <div class="stat">
+            <div class="stat-title">Memory</div>
+            <div class="stat-value text-success text-3xl">26%</div>
+            <div class="stat-desc">~6 GB free of 8 GB — plenty for a 2nd instance</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">CPU</div>
+            <div class="stat-value text-warning text-3xl">51%</div>
+            <div class="stat-desc">Watch this after launch — idle WhatsApp is mostly RAM</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Disk</div>
+            <div class="stat-value text-success text-3xl">17%</div>
+            <div class="stat-desc">17 / 100 GB — non-issue</div>
+          </div>
+        </div>
+      </div>
+      <div role="alert" class="alert alert-warning alert-soft mt-3">
+        <span>⚠️ Enable the <strong>$6/mo daily backups</strong> before putting his data on the box — you're on manual snapshots only right now.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE DIAGRAM -->
+  <section class="space-y-3">
+    <h2 class="text-2xl font-bold">How it fits together</h2>
+    <p class="text-base-content/70">Two Hermes instances share only the hardware. Everything else — data, WhatsApp session, Google identity — is walled off.</p>
+    <div class="card card-border bg-base-100">
+      <div class="card-body overflow-x-auto">
+        <pre class="mermaid">
+flowchart TD
+    BRO["👤 Brother<br/>(personal phone)"]
+    subgraph VPS["Hostinger VPS · KVM 2"]
+        direction TB
+        H1["Hermes #1<br/>your 2 profiles<br/>(unchanged)"]
+        subgraph NEW["🆕 Hermes #2 — isolated instance"]
+            direction TB
+            WA["WhatsApp session<br/>dedicated number<br/>(QR-linked)"]
+            LLM["LLM chat · Hebrew"]
+            SCHED["Scheduler + reminders<br/>(persists, survives restart)"]
+            STORE["Task store<br/>1 list · work/personal tags"]
+        end
+    end
+    GM["📧 Assistant's OWN Gmail"]
+    CAL["📅 Assistant's OWN Calendar"]
+    GRP["👥 1–2 groups the<br/>assistant is added to"]
+
+    BRO -->|"chats + forwards emails"| WA
+    WA --> LLM
+    LLM --> SCHED
+    LLM --> STORE
+    LLM -->|"draft → he replies YES"| GM
+    LLM -->|"creates event + invites him"| CAL
+    CAL -->|"invite lands on his calendar"| BRO
+    SCHED -->|"proactive nudge ❓"| WA
+    WA -->|"searches"| GRP
+    H1 -.->|"shares only CPU/RAM"| NEW
+
+    style NEW fill:#1e293b,stroke:#818cf8,stroke-width:2px
+    style H1 fill:#334155,stroke:#64748b
+    style SCHED stroke:#fbbf24,stroke-width:2px
+        </pre>
+      </div>
+    </div>
+    <p class="text-sm text-base-content/60">✅ The dotted-gold path (scheduler → proactive WhatsApp) is confirmed — it's Hermes' built-in cron, not a custom build.</p>
+  </section>
+
+  <!-- LOCKED DECISIONS -->
+  <section class="space-y-3">
+    <h2 class="text-2xl font-bold">Locked decisions</h2>
+    <p class="text-base-content/70">Everything we resolved in the interview. Annotate any you want to revisit.</p>
+    <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-100">
+      <table class="table table-zebra">
+        <thead>
+          <tr><th>Area</th><th>Decision</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Deployment</strong></td>
+            <td>Separate Hermes instance, same VPS (container / own systemd service + own data dir)</td>
+            <td>Full data isolation from your profiles; no second box to pay for</td>
+          </tr>
+          <tr>
+            <td><strong>WhatsApp channel</strong></td>
+            <td>Unofficial QR-link (whatsapp-web.js / Baileys), same as your stack</td>
+            <td>Free, no Meta approval, supports free proactive messaging</td>
+          </tr>
+          <tr>
+            <td><strong>WhatsApp number</strong></td>
+            <td>Dedicated cheap physical SIM — NOT his personal number</td>
+            <td>Keeps ban risk off his real line; assistant can't message his contacts by accident</td>
+          </tr>
+          <tr>
+            <td><strong>WhatsApp search</strong></td>
+            <td>Scoped to the assistant's own chats + 1–2 groups you add it to</td>
+            <td>Real search without touching his private account</td>
+          </tr>
+          <tr>
+            <td><strong>Email — read</strong></td>
+            <td>He <em>manually forwards</em> selected emails to the assistant's address</td>
+            <td>MVP-simple, zero inbox access, full user control</td>
+          </tr>
+          <tr>
+            <td><strong>Email — send</strong></td>
+            <td>Assistant drafts → he replies "YES" → sends from assistant's own address</td>
+            <td>Nothing goes out on his behalf without confirmation</td>
+          </tr>
+          <tr>
+            <td><strong>Calendar</strong></td>
+            <td>Assistant creates events on its OWN calendar and invites him (Hermes-native)</td>
+            <td>No OAuth on his account; native reminders on his phone</td>
+          </tr>
+          <tr>
+            <td><strong>Reminders</strong></td>
+            <td>WhatsApp nudge; reply "done" resets the clock; snooze option</td>
+            <td>Conversational, matches WhatsApp-only, no drift/nagging</td>
+          </tr>
+          <tr>
+            <td><strong>Pattern learning</strong></td>
+            <td>Logs each "ordered" date; after 2–3, infers interval (~40d) and auto-arms</td>
+            <td>Just median arithmetic on data already logged — cheap</td>
+          </tr>
+          <tr>
+            <td><strong>Tasks</strong></td>
+            <td>One list, tagged work/personal, add/complete/list/filter via WhatsApp</td>
+            <td>All the task manager a single user needs day one</td>
+          </tr>
+          <tr>
+            <td><strong>Language & tone</strong></td>
+            <td>Hebrew, warm but brief — short bubbles, minimal emoji</td>
+            <td>Everything lands as WhatsApp messages on his phone</td>
+          </tr>
+          <tr>
+            <td><strong>OAuth on his accounts</strong></td>
+            <td>NONE needed in MVP</td>
+            <td>Calendar = invites, email = manual forward — no consent screens for a non-technical user</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- WHATSAPP MOCK -->
+  <section class="space-y-3">
+    <h2 class="text-2xl font-bold">What he'll actually see</h2>
+    <p class="text-base-content/70">The dog-food reminder, self-correcting cadence, in Hebrew.</p>
+    <div class="mockup-phone border-primary max-w-sm mx-auto">
+      <div class="mockup-phone-camera"></div>
+      <div class="mockup-phone-display bg-base-200 !text-base-content">
+        <div class="p-4 pt-10 space-y-2 rtl w-full">
+          <div class="chat chat-start"><div class="chat-bubble chat-bubble-neutral text-sm">🐶 היי, עברו 40 יום מההזמנה האחרונה של אוכל לכלב — להזמין שוב?</div></div>
+          <div class="chat chat-end"><div class="chat-bubble chat-bubble-primary text-sm">כן הזמנתי עכשיו</div></div>
+          <div class="chat chat-start"><div class="chat-bubble chat-bubble-neutral text-sm">מעולה ✅ מאפס את השעון — אזכיר שוב בעוד ~40 יום.</div></div>
+          <div class="chat chat-start"><div class="chat-bubble chat-bubble-neutral text-sm">📅 קבעתי "צהריים עם דנה" ליום ה' 13:00 ושלחתי לך הזמנה. לאשר?</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUILD ITEMS vs CONFIGURE -->
+  <section class="grid gap-4 md:grid-cols-2">
+    <div class="card card-border bg-base-100">
+      <div class="card-body">
+        <h2 class="card-title text-success">🔧 Configure (Hermes already does)</h2>
+        <ul class="list-disc ps-5 text-sm space-y-1 text-base-content/80">
+          <li>WhatsApp channel + LLM conversation</li>
+          <li>Own Gmail send / receive</li>
+          <li>Calendar event creation + invites</li>
+          <li><strong>Scheduled/proactive WhatsApp</strong> — built-in cron ✅</li>
+          <li>LLM routing via OpenRouter (model-agnostic)</li>
+          <li>Persistent memory + self-improving skills (basis for the Second Brain)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card card-border bg-base-100">
+      <div class="card-body">
+        <h2 class="card-title text-warning">🆕 Net-new / custom layer</h2>
+        <ul class="list-disc ps-5 text-sm space-y-1 text-base-content/80">
+          <li>Ack-reset + ~40-day interval-learning <em>around</em> Hermes cron</li>
+          <li>Task store + work/personal tagging</li>
+          <li>Draft-and-confirm "YES" gate for sends</li>
+          <li>Git-commit-per-memory wiki + SSH deploy key</li>
+          <li>healthchecks.io dead-man's-switch wiring</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- RISKS -->
+  <section class="space-y-3">
+    <h2 class="text-2xl font-bold">Risks & things to watch</h2>
+    <div class="grid gap-3 md:grid-cols-2">
+      <div role="alert" class="alert alert-error alert-soft"><span><strong>WhatsApp ban risk.</strong> Unofficial libs can get a number flagged. Dedicated SIM contains the blast radius — never his real number. Use a physical SIM, not VoIP.</span></div>
+      <div role="alert" class="alert alert-warning alert-soft"><span><strong>Session drops.</strong> QR sessions occasionally need a re-scan. Keep the SIM accessible; expect the odd re-link.</span></div>
+      <div role="alert" class="alert alert-warning alert-soft"><span><strong>CPU headroom.</strong> Box already averages 51%. Monitor after launch; upgrade tier if it's steady, not spiky.</span></div>
+      <div role="alert" class="alert alert-info alert-soft"><span><strong>Reply identity.</strong> Sent emails come from the assistant's address, not his. "Send-as him" alias is a later add if he wants it.</span></div>
+      <div role="alert" class="alert alert-info alert-soft"><span><strong>Data privacy.</strong> His forwarded emails + WhatsApp live on your VPS. Fine for a brother, but backups now hold his data — hence the backup toggle.</span></div>
+    </div>
+  </section>
+
+  <!-- OPEN QUESTION + INPUT -->
+  <section class="space-y-4" data-theme="night">
+    <div class="card card-border bg-base-100">
+      <div class="card-body space-y-4">
+        <h2 class="card-title text-2xl">✅ Resolved — Hermes has built-in scheduling</h2>
+        <p class="text-base-content/80">Confirmed in the Hermes docs: <strong>"Scheduled automations — Built-in cron with delivery to any platform,"</strong> and the integrations page lists <strong>"scheduled reports" under WhatsApp</strong>. So Hermes <em>can</em> initiate WhatsApp messages on a timer — no scheduler to build. Reminders become <strong>configure Hermes cron + a thin ack-reset / interval-learning layer</strong> on top.</p>
+        <div role="alert" class="alert alert-success alert-soft"><span>Source: Hermes Agent docs (Key Features) &amp; integrations page — Nous Research.</span></div>
+
+        <div class="divider"></div>
+
+        <h3 class="text-lg font-bold">Your call on the plan</h3>
+        <form data-lavish-question="approval" onsubmit="event.preventDefault(); const c = new FormData(event.currentTarget).get('approval'); if(c) window.lavish.queuePrompt('Plan decision: ' + c, { tag:'decision', text:'Plan: ' + c, element: event.currentTarget, data:{ question:'approval', answer:c } });">
+          <div class="space-y-2">
+            <label class="flex items-start gap-3 p-3 rounded-box bg-base-200 cursor-pointer"><input type="radio" name="approval" value="Approved — go build it (start by verifying Hermes proactive-WhatsApp on the box)" class="radio radio-primary mt-0.5"><span class="text-sm">✅ Approved — go build it, starting with verifying Hermes' proactive-WhatsApp capability on the VPS</span></label>
+            <label class="flex items-start gap-3 p-3 rounded-box bg-base-200 cursor-pointer"><input type="radio" name="approval" value="Approved but adjust some decisions (see my annotations)" class="radio radio-primary mt-0.5"><span class="text-sm">✏️ Approved, but adjust some decisions — see my annotations</span></label>
+            <label class="flex items-start gap-3 p-3 rounded-box bg-base-200 cursor-pointer"><input type="radio" name="approval" value="Hold — more questions first" class="radio radio-primary mt-0.5"><span class="text-sm">⏸️ Hold — I have more questions first</span></label>
+          </div>
+          <button type="submit" class="btn btn-primary mt-4">Queue my answer</button>
+        </form>
+        <p class="text-xs text-base-content/50">Tip: select text or click any element to annotate a specific decision, then Send to Agent.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUILD STEPS ON THE BOX -->
+  <section class="space-y-3">
+    <h2 class="text-2xl font-bold">▶️ Do this on the VPS (in order)</h2>
+    <p class="text-base-content/70">You run these on the box — I have no access to it. Step 0 is the gate that decides the scheduler build.</p>
+    <ul class="steps steps-vertical w-full">
+      <li class="step step-success" data-content="✓"><div class="text-start ms-2"><strong>Scheduling — resolved:</strong> Hermes has built-in cron with delivery to any platform (WhatsApp incl.). Reminders = configure Hermes cron + the ack-reset/interval-learning layer. No scheduler to build.</div></li>
+      <li class="step step-primary" data-content="1"><div class="text-start ms-2"><strong>Enable daily backups</strong> ($6/mo) before any of his data lands.</div></li>
+      <li class="step step-primary" data-content="2"><div class="text-start ms-2"><strong>Get a cheap physical SIM</strong> for the assistant's WhatsApp number; keep it in a spare phone for QR-link + re-scans.</div></li>
+      <li class="step step-primary" data-content="3"><div class="text-start ms-2"><strong>Stand up Hermes #2</strong> — separate container / systemd service, own data dir + port, own Google identity. Don't touch instance #1.</div></li>
+      <li class="step step-primary" data-content="4"><div class="text-start ms-2"><strong>QR-link the assistant number</strong>, set Hebrew persona, add it to the 1–2 groups for WhatsApp search.</div></li>
+      <li class="step step-primary" data-content="5"><div class="text-start ms-2"><strong>Wire tasks + reminders</strong> (one tagged list, ack-reset, interval learning) and the draft→YES send gate.</div></li>
+      <li class="step step-primary" data-content="6"><div class="text-start ms-2"><strong>Onboard your brother:</strong> save the assistant contact, tell him the assistant's email to forward to, accept a test calendar invite, run the dog-food reminder end-to-end.</div></li>
+    </ul>
+  </section>
+
+  <!-- SECOND BRAIN — NEW BRANCH -->
+  <section class="card card-border bg-base-100" data-theme="night">
+    <div class="card-body space-y-2">
+      <h2 class="card-title text-2xl">🧠 Second Brain — GitHub wiki (design agreed)</h2>
+      <p class="text-base-content/80">The brother's agent distills durable knowledge into a <strong>private</strong> GitHub repo — a curated, queryable llm-wiki. Scoped to <strong>his agent only</strong>, its own isolated repo.</p>
+
+      <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-200 mt-2">
+        <table class="table table-sm">
+          <thead><tr><th>Decision</th><th>Answer</th></tr></thead>
+          <tbody>
+            <tr><td>Scope</td><td>Brother's agent only · own private repo</td></tr>
+            <tr><td>Content</td><td>Curated knowledge (facts / decisions / preferences) — not raw transcripts</td></tr>
+            <tr><td>Format</td><td>Atomic markdown + YAML frontmatter + <code>[[wikilinks]]</code>, foldered by kind, <code>MEMORY.md</code> index</td></tr>
+            <tr><td>Capture</td><td>Hybrid: auto-extract durable items + explicit "תזכור ש…" + plain-language correct/delete</td></tr>
+            <tr><td>Cadence</td><td>Commit + push per memory write; message = memory summary (git log = learning trail)</td></tr>
+            <tr><td>Query</td><td>Brother via WhatsApp (assistant gains recall); you via any LLM against the raw repo. No custom UI.</td></tr>
+            <tr><td>Git auth</td><td>Per-repo SSH deploy key (write), stored in the instance's isolated dir</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid gap-2 md:grid-cols-2 mt-2">
+        <div role="alert" class="alert alert-success alert-soft"><span>On-box memory dir <em>is</em> the git working copy — the repo is its off-box mirror + audit log.</span></div>
+        <div role="alert" class="alert alert-info alert-soft"><span>Single writer (his instance) → no merge conflicts. Auto-captures write quietly and note it briefly ("שמרתי: …").</span></div>
+      </div>
+      <div role="alert" class="alert alert-warning alert-soft mt-2"><span>🤝 <strong>Consent:</strong> you'll tell him plainly the assistant keeps a private memory of his stuff that you can also read. Agreed — so your query path is clean.</span></div>
+    </div>
+  </section>
+
+  <!-- COST & RELIABILITY -->
+  <section class="grid gap-4 md:grid-cols-2" data-theme="night">
+    <div class="card card-border bg-base-100">
+      <div class="card-body">
+        <h2 class="card-title text-lg">💸 Cost model</h2>
+        <ul class="list-disc ps-5 text-sm space-y-1 text-base-content/80">
+          <li>LLM via <strong>OpenRouter</strong> — one endpoint, both tiers</li>
+          <li>Conversation → capable model; memory-worthiness judgment → cheap model behind a heuristic pre-filter</li>
+          <li>Prepaid credits act as a natural spend ceiling (~$10–20/mo target)</li>
+          <li>Always-on instance = VPS compute you already pay for</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card card-border bg-base-100">
+      <div class="card-body">
+        <h2 class="card-title text-lg">🛟 Reliability — no silent failure</h2>
+        <ul class="list-disc ps-5 text-sm space-y-1 text-base-content/80">
+          <li>Instance under systemd/Docker <code>restart=always</code> — crashes self-heal</li>
+          <li>Dropped WhatsApp session → detected, prompts re-scan</li>
+          <li><strong>healthchecks.io dead-man's-switch</strong> pings <em>you</em> (email/Telegram) if the box goes quiet — runs outside the VPS so it fires even when the whole instance is down</li>
+          <li>Your brother never has to notice — you're alerted first</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="text-center text-sm text-base-content/40 pt-4">Hermes assistant · MVP plan + Second Brain branch · annotate freely, then send back</footer>
+
+</main>
+</body>
+</html>
