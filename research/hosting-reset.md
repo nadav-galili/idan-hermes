@@ -65,6 +65,50 @@ At 2.5–7.5 audio-hours/month, API STT costs **€0.1–2.5/mo** while on-box S
 - **Resubscribing Hostinger:** KVM 2 renews at ~$14.99/mo (~€13.8) for 2 vCPU/8 GB — worse specs-per-euro than every option above; the cancellation was the right call.
 - **Hetzner CAX (ARM) tiers:** after the June 2026 price hike they no longer undercut x86, and CPU CT2 inference is slower on ARM. Only viable paired with off-box STT, where CX23 is cheaper anyway.
 
+## Follow-up: what about Railway?
+
+Asked as a follow-up: does Railway (railway.com, PaaS) beat the top pick (Hetzner CX23 + ivrit-ai RunPod serverless, ~€6.5–7.5/mo)?
+
+### Railway pricing (August 2026)
+
+Hobby plan: **$5/mo base fee, which includes $5 of usage credit**; usage beyond the credit is billed per-second:
+
+| Resource | Rate | = per month (730 h) |
+|---|---|---|
+| Memory | $0.00000386 / GB-s | **~$10 / GB-month** |
+| CPU | $0.00000772 / vCPU-s | **~$20 / vCPU-month** |
+| Volume storage | $0.00000006 / GB-s | ~$0.16 / GB-month |
+| Egress | $0.05 / GB | — |
+
+Hobby volume cap: **5 GB per volume**. Billing is on *actual* usage (a service idling at 600 MB RAM bills 0.6 GB), which is Railway's honest upside — but always-on services never scale to zero, so the meter runs 24/7.
+
+### Cost of this actual workload
+
+Two always-on Hermes services, 24/7, WhatsApp sessions held open:
+
+- **RAM:** 0.5–1 GB each → 1–2 GB continuous → **$10–20/mo**
+- **CPU:** low but nonzero (websocket keepalive, message handling, git ops) → ~0.05–0.1 vCPU avg each → **$2–4/mo**
+- **Volumes:** session state + git working copies, ~2 GB × 2 services → **~$0.6/mo**
+- **Egress:** WhatsApp traffic + git pushes, well under 5 GB → **<$0.25/mo**
+
+**Total: ~$13–25/mo (≈€12–23), of which $5 is covered by the Hobby credit → ~$8–20/mo out of pocket, realistically ~$12–18/mo (~€11–17).** That's 1.5–2.5× the Hetzner CX23 total, for less headroom (2 GB of RAM on Railway alone costs more than the whole Hetzner box). On-box STT is a non-starter on Railway: 3 GB RAM held by a loaded CT2 model would bill ~$30/mo by itself.
+
+### Qualitative fit vs the runbook's VPS assumptions
+
+The execution runbook assumes a VPS shape. Translation to Railway containers:
+
+| Runbook assumption | On Railway |
+|---|---|
+| systemd services | ✗ No systemd. Each service is a container with one entrypoint; restarts/health managed by Railway. Roughly equivalent for "keep the process alive", but unit files, targets, journald all go away |
+| cron on the box | ✗/~ Railway cron schedules exist but only for **run-to-completion** services (the container is started per schedule and must exit) — not for firing jobs inside an always-on service. In-process schedulers (node-cron) needed instead |
+| `flock` across two writers sharing one filesystem | ✗ **Does not translate.** Verified against current Railway docs: "each service can only have a single volume" and a volume cannot be attached to multiple services (Railway even blocks two *deployments* of the same service mounting one volume simultaneously). Two services can never share a filesystem — the whole flock coordination pattern is impossible unless both instances are merged into one service/container |
+| local SSH deploy keys, on-box git repo | ✗/~ No persistent box to SSH into; `railway ssh` reaches an ephemeral container. Anything outside the volume is wiped on redeploy. A git working copy *on the volume* survives, but mutable working copies fight Railway's immutable image-based deploy model |
+| Persistent disk | ~ One volume per service, 5 GB cap on Hobby, no volume + replicas |
+
+### Verdict
+
+**Railway does not displace the Hetzner recommendation.** It costs roughly 2× as much (~€11–17/mo vs ~€6.5–7.5/mo), caps RAM economics such that on-box STT is unaffordable, and — decisively — its one-volume-per-service / no-shared-volume model breaks the runbook's two-writers-on-one-filesystem design outright. Railway would make sense for a stateless webhook-style bot; for two stateful, filesystem-coordinated, always-on WhatsApp session holders, a plain VPS is both cheaper and shape-compatible.
+
 ## Sources
 - Hetzner price adjustment (15 June 2026): https://docs.hetzner.com/general/infrastructure-and-availability/price-adjustment/
 - Hetzner CX23/CX33 specs: https://sparecores.com/server/hcloud/cx23, https://sparecores.com/server/hcloud/cx33
@@ -75,3 +119,5 @@ At 2.5–7.5 audio-hours/month, API STT costs **€0.1–2.5/mo** while on-box S
 - ivrit.ai API / RunPod serverless: https://www.ivrit.ai/en/api/, https://github.com/ivrit-ai/runpod-serverless
 - Groq whisper pricing: https://openrouter.ai/openai/whisper-large-v3-turbo, https://www.cloudzero.com/blog/groq-pricing/
 - OpenAI transcription pricing: https://costbench.com/software/ai-transcription-apis/openai-whisper/
+- Railway pricing: https://railway.com/pricing
+- Railway volumes (single volume per service, no sharing): https://docs.railway.com/reference/volumes
