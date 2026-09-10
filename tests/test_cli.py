@@ -59,6 +59,7 @@ def test_cli_book_dry_run_by_default(capsys, monkeypatch):
 def test_cli_book_execute_requires_yes_or_abort(monkeypatch):
     monkeypatch.setenv("HOLMES_PHONE", "054")
     monkeypatch.setenv("HOLMES_PASSWORD", "pw")
+    monkeypatch.setenv("HOLMES_I_HAVE_PERMISSION", "1")
     with patch("holmes_place.cli.HolmesPlaceClient") as MockClient, patch("holmes_place.cli.book") as mock_book, patch(
         "builtins.input", return_value="n"
     ):

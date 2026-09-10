@@ -129,7 +129,7 @@ clubs:
     import json
     from holmes_place.cli import main
 
-    rc = main(["schedule", "--config", str(p), "--output", str(out)])
+    rc = main(["schedule", "--config", str(p), "--output", str(out), "--i-have-permission"])
     assert rc == 0
     data = json.loads(capsys.readouterr().out)
     assert data["jobs"] == 1

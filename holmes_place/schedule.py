@@ -117,6 +117,7 @@ def plan_schedule(
             seat_opt.strip(),
             "--execute",
             "--yes",
+            "--i-have-permission",
         ]
         cmd = " ".join(p for p in cmd_parts if p)
         safe_type = "".join(c if c.isalnum() else "_" for c in lesson.type)

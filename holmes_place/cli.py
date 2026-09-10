@@ -47,6 +47,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     b.add_argument("--no-random-fallback", action="store_true")
     b.add_argument("--max-wait", type=int, default=180, help="seconds to poll opening window")
     b.add_argument("--yes", action="store_true", help="skip confirmation prompt")
+    b.add_argument("--i-have-permission", action="store_true", help="confirm terms verified & permission obtained (required for --execute)")
+    b.add_argument("--notify-url", default=None, help="webhook URL for success/failure notification")
+    b.add_argument("--notify-log", default=None, help="append notification JSON lines to this file")
 
     u = sub.add_parser("cancel", help="cancel registration")
     common(u)
@@ -61,6 +64,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     s.add_argument("--log-dir", required=False, default="logs", help="log dir for timer runs")
     s.add_argument("--lead-seconds", type=int, required=False, default=2, help="seconds before open to fire")
     s.add_argument("--dry-run", action="store_true", help="print plan only, don't write files")
+    s.add_argument("--i-have-permission", action="store_true", help="confirm terms verified (required unless --dry-run)")
     s.add_argument("--base-url", default=None)
     s.add_argument("--kill-switch", action="store_true", help="refuse to send")
 
@@ -99,6 +103,14 @@ def main(argv: list[str] | None = None) -> int:
         # schedule is config-driven, does not require login; just plan timers
         from holmes_place.catalog import load_lessons_config
         from holmes_place.schedule import generate_schedule, plan_schedule
+        from holmes_place.terms import require_permission
+
+        if not args.dry_run:
+            try:
+                require_permission(getattr(args, "i_have_permission", False))
+            except PermissionError as e:
+                print(str(e), file=sys.stderr)
+                return 2
 
         try:
             lessons = load_lessons_config(args.config)
@@ -230,6 +242,15 @@ def main(argv: list[str] | None = None) -> int:
             if dry_run and args.execute and args.dry_run:
                 dry_run = True
 
+            if not dry_run:
+                from holmes_place.terms import require_permission
+
+                try:
+                    require_permission(getattr(args, "i_have_permission", False))
+                except PermissionError as e:
+                    print(str(e), file=sys.stderr)
+                    return 2
+
             seats: list[int] = []
             if args.seats:
                 seats = [int(s.strip()) for s in args.seats.split(",") if s.strip()]
@@ -260,6 +281,26 @@ def main(argv: list[str] | None = None) -> int:
                 on_status=lambda m: print(m),
                 member_id=creds.phone,
             )
+            # notification on success/failure (always, but only webhooks/logs if configured)
+            try:
+                from holmes_place.notify import notify
+
+                notify(
+                    status=booking_res.status,
+                    lesson={
+                        "branch_id": lesson.branch_id,
+                        "lesson_id": lesson.lesson_id,
+                        "date": lesson.date,
+                        "time": lesson.time,
+                        "instructor_id": lesson.instructor_id,
+                    },
+                    seat=booking_res.seat,
+                    message=booking_res.message,
+                    notify_url=getattr(args, "notify_url", None),
+                    notify_log=getattr(args, "notify_log", None),
+                )
+            except Exception:
+                pass
             print(json.dumps({"status": booking_res.status, "seat": booking_res.seat, "message": booking_res.message}, indent=2, ensure_ascii=False))
             return 0 if booking_res.status in ("booked", "already_registered", "dry_run") else 1
     finally:

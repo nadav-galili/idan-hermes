@@ -51,6 +51,16 @@ holmes-place schedule --config holmes_lessons.yaml --branch 205 --seats 12,10 -o
 
 Verify Holmes Place / Fizikal terms and obtain permission before unattended automation.
 
+Unattended paths (`book --execute`, `schedule` without `--dry-run`) require an explicit gate:
+`--i-have-permission` or `HOLMES_I_HAVE_PERMISSION=1`. Read-only paths (`discover`, `check-clock`, `book --dry-run`, `schedule --dry-run`) do not require it.
+
+## Notifications
+
+`book` always prints structured JSON to stdout. If configured, it also notifies on success/failure:
+- `HOLMES_NOTIFY_URL` / `--notify-url` — POSTs JSON `{status, seat, message, lesson}` to webhook (Slack/Telegram adapter)
+- `HOLMES_NOTIFY_LOG` / `--notify-log` — appends JSON line to file (default `logs/notifications.jsonl` if set)
+- Timer logs (`schedule` → `logs/holmes-*.log`) already capture stdout with `TZ=Asia/Jerusalem`.
+
 ## Development
 
 ```bash

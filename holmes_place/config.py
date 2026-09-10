@@ -13,6 +13,7 @@ ENDPOINTS: dict[str, str] = {
     "login": "{base_url}/api.php?action=login",
     "logout": "{base_url}/api.php?action=logout",
     "available_seats": "{base_url}/api.php?action=getAvailableSeats",
+    # legacy self-registration endpoint — not used by booking flow, kept for reference
     "register": "{base_url}/api.php?action=register",
     "register_to_lesson": "{base_url}/api.php?action=registerToLesson",
     "register_to_lesson_with_seat": "{base_url}/api.php?action=registerToLessonWithSeat",
