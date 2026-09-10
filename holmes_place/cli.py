@@ -28,8 +28,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         sp.add_argument("--base-url", default=None)
         sp.add_argument("--kill-switch", action="store_true", help="refuse to send")
 
-    d = sub.add_parser("discover", help="read-only: list available seats")
-    common(d)
+    d = sub.add_parser("discover", help="read-only: list available seats / validate catalog")
+    d.add_argument("--branch", required=False, default=None, help="branch/club ID (allow-list)")
+    d.add_argument("--lesson", required=False, default=None, help="lesson ID")
+    d.add_argument("--date", required=False, default=None, help="YYYY/MM/DD")
+    d.add_argument("--time", required=False, default=None, help="HH:MM (Asia/Jerusalem)")
+    d.add_argument("--config", required=False, default=None, help="path to holmes_lessons.yaml for catalog validation")
+    d.add_argument("--base-url", default=None)
+    d.add_argument("--kill-switch", action="store_true", help="refuse to send")
 
     b = sub.add_parser("book", help="book a lesson (dry-run by default unless --execute)")
     common(b)
@@ -78,7 +84,11 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"drift_seconds": drift.total_seconds() if drift else None}, indent=2))
         return 0
 
-    _validate_date_time(args.date, args.time)
+    # discover with --config is catalog mode (branch/lesson/date/time not required)
+    is_catalog_discover = args.cmd == "discover" and getattr(args, "config", None)
+
+    if not is_catalog_discover:
+        _validate_date_time(args.date, args.time)
 
     client = HolmesPlaceClient(settings)
 
@@ -97,6 +107,47 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.cmd == "discover":
+            if getattr(args, "config", None):
+                from holmes_place.catalog import discovery_summary, load_lessons_config, validate_catalog
+
+                try:
+                    lessons = load_lessons_config(args.config)
+                except Exception as e:
+                    print(f"config load failed: {e}", file=sys.stderr)
+                    return 2
+                # branch filter if provided
+                branch_filter = getattr(args, "branch", None)
+                results = validate_catalog(client, lessons, branch_filter=branch_filter)
+                summary = discovery_summary(results)
+                # JSON with per-lesson details + summary
+                out = {
+                    "summary": summary,
+                    "lessons": [
+                        {
+                            "branch_id": r.lesson.branch_id,
+                            "lesson_id": r.lesson.lesson_id,
+                            "instructor_id": r.lesson.instructor_id,
+                            "type": r.lesson.type,
+                            "day": r.lesson.day,
+                            "start_time": r.lesson.start_time,
+                            "registration_day": r.lesson.registration_day,
+                            "registration_start_time": r.lesson.registration_start_time,
+                            "next_registration": r.next_registration.isoformat() if r.next_registration else None,
+                            "target_date": r.target_date,
+                            "target_time": r.target_time,
+                            "available_seats": r.available_seats,
+                            "seat_behavior": r.seat_behavior,
+                            "error": r.error,
+                        }
+                        for r in results
+                    ],
+                }
+                print(json.dumps(out, indent=2, ensure_ascii=False))
+                return 0
+            # single-lesson mode
+            if not args.branch or not args.lesson or not args.date or not args.time:
+                print("discover requires --branch --lesson --date --time (or --config)", file=sys.stderr)
+                return 2
             disc = discover(client, branch_id=args.branch, lesson_id=args.lesson, date=args.date, time_str=args.time)
             print(json.dumps(disc, indent=2, ensure_ascii=False))
             return 0

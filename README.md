@@ -14,8 +14,14 @@ pip install -e ".[dev]"
 cp .env.example .env   # HOLMES_PHONE, HOLMES_PASSWORD
 # or: export HOLMES_PHONE=... HOLMES_PASSWORD=...
 
-# read-only discovery (logs in, checks session, lists seats — no booking)
+# read-only discovery (single lesson)
 holmes-place discover --branch 205 --lesson 123 --date 2026/09/10 --time 18:00
+
+# catalog validation — validates your holmes_lessons.yaml allow-list
+# No server-side catalog endpoint was found (probed 2026-09-10); this validates
+# the YAML via getAvailableSeats and reports seat behavior + next registration time.
+holmes-place discover --config holmes_lessons.yaml
+holmes-place discover --config holmes_lessons.yaml --branch 205
 
 # dry-run booking (validates, does not send register)
 holmes-place book --branch 205 --lesson 123 --date 2026/09/10 --time 18:00 --seat 12 --dry-run
