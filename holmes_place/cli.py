@@ -53,6 +53,17 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     sub.add_parser("check-clock", help="compare server Date header to local Jerusalem time")
 
+    s = sub.add_parser("schedule", help="generate timers for booking at registration open (one-shot per lesson)")
+    s.add_argument("--config", required=True, help="path to holmes_lessons.yaml")
+    s.add_argument("--branch", required=False, default=None, help="filter to branch")
+    s.add_argument("--seats", required=False, default=None, help="seat preferences, e.g. 12,10 or 5")
+    s.add_argument("--output", "-o", required=False, default="schedule", help="output dir for timer files")
+    s.add_argument("--log-dir", required=False, default="logs", help="log dir for timer runs")
+    s.add_argument("--lead-seconds", type=int, required=False, default=2, help="seconds before open to fire")
+    s.add_argument("--dry-run", action="store_true", help="print plan only, don't write files")
+    s.add_argument("--base-url", default=None)
+    s.add_argument("--kill-switch", action="store_true", help="refuse to send")
+
     return p.parse_args(argv)
 
 
@@ -82,6 +93,59 @@ def main(argv: list[str] | None = None) -> int:
         client = HolmesPlaceClient(settings)
         drift = check_clock_drift(client)
         print(json.dumps({"drift_seconds": drift.total_seconds() if drift else None}, indent=2))
+        return 0
+
+    if args.cmd == "schedule":
+        # schedule is config-driven, does not require login; just plan timers
+        from holmes_place.catalog import load_lessons_config
+        from holmes_place.schedule import generate_schedule, plan_schedule
+
+        try:
+            lessons = load_lessons_config(args.config)
+        except Exception as e:
+            print(f"config load failed: {e}", file=sys.stderr)
+            return 2
+        if args.dry_run:
+            jobs = plan_schedule(
+                lessons,
+                branch_filter=getattr(args, "branch", None),
+                lead_seconds=args.lead_seconds,
+                seat_args=getattr(args, "seats", None),
+                log_dir=args.log_dir,
+            )
+            print(
+                json.dumps(
+                    {
+                        "jobs": len(jobs),
+                        "next_runs": [
+                            {
+                                "job": j.job_name,
+                                "run_at": j.run_at.isoformat(),
+                                "run_at_utc": j.run_at.astimezone(__import__("zoneinfo").ZoneInfo("UTC")).isoformat(),
+                                "registration_open": j.registration_open.isoformat(),
+                                "lesson_date": j.lesson_date,
+                                "command": j.command,
+                                "log": str(j.log_path),
+                            }
+                            for j in jobs
+                        ],
+                    },
+                    indent=2,
+                )
+            )
+            return 0
+        sched_res = generate_schedule(
+            args.output,
+            lessons,
+            branch_filter=getattr(args, "branch", None),
+            lead_seconds=args.lead_seconds,
+            seat_args=getattr(args, "seats", None),
+            log_dir=args.log_dir,
+        )
+        print(json.dumps(sched_res, indent=2, ensure_ascii=False))
+        print(f"\nWrote {sched_res['jobs']} jobs to {args.output}/ (launchd + systemd)", file=sys.stderr)
+        print("Install: macOS `launchctl load launchd/*.plist` | Linux `systemctl --user enable --now systemd/*.timer`", file=sys.stderr)
+        print("Re-run schedule weekly to re-arm one-shot timers after booking.", file=sys.stderr)
         return 0
 
     # discover with --config is catalog mode (branch/lesson/date/time not required)
@@ -186,7 +250,7 @@ def main(argv: list[str] | None = None) -> int:
                 time=args.time,
                 instructor_id=args.instructor,
             )
-            res = book(
+            booking_res = book(
                 client,
                 lesson,
                 seat_preferences=seats,
@@ -196,8 +260,8 @@ def main(argv: list[str] | None = None) -> int:
                 on_status=lambda m: print(m),
                 member_id=creds.phone,
             )
-            print(json.dumps({"status": res.status, "seat": res.seat, "message": res.message}, indent=2, ensure_ascii=False))
-            return 0 if res.status in ("booked", "already_registered", "dry_run") else 1
+            print(json.dumps({"status": booking_res.status, "seat": booking_res.seat, "message": booking_res.message}, indent=2, ensure_ascii=False))
+            return 0 if booking_res.status in ("booked", "already_registered", "dry_run") else 1
     finally:
         try:
             client.logout()

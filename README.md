@@ -27,7 +27,14 @@ holmes-place discover --config holmes_lessons.yaml --branch 205
 holmes-place book --branch 205 --lesson 123 --date 2026/09/10 --time 18:00 --seat 12 --dry-run
 
 # real booking with safeguards (single stream, rate-limited, idempotent)
-holmes-place book --branch 205 --lesson 123 --date 2026/09/10 --time 18:00 --seat 12
+holmes-place book --branch 205 --lesson 123 --date 2026/09/10 --time 18:00 --seat 12 --execute --yes
+
+# schedule timers for next registration opens (one-shot per lesson, re-run weekly)
+holmes-place schedule --config holmes_lessons.yaml --dry-run
+holmes-place schedule --config holmes_lessons.yaml --branch 205 --seats 12,10 -o schedule
+# macOS: launchctl load schedule/launchd/*.plist
+# Linux: systemctl --user enable --now schedule/systemd/*.timer
+# logs: schedule/launchd uses logs/ per job, respects HOLMES_KILL_SWITCH=1
 ```
 
 ## Safeguards
