@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.venvs/
+.env
+users_data/
+*.log
+dist/
+build/
+*.egg-info/
+.coverage
+htmlcov/
+.mypy_cache/
+.pytest_cache/
+holmes_lessons.yaml
+holmes_place_api.log

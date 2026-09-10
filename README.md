@@ -1,0 +1,46 @@
+# Holmes Place Israel — Booking Client
+
+Validated 2026-09-10 against live `https://www.holmesplace.co.il/api.php` endpoints (see `docs/holmes-place-booking-research.md`).
+
+Builds a small, tested client around the still-live `api.php` flow. Uses `raviv-steinberg/holmesplace_register` only as protocol reference — not as a runtime dependency.
+
+## Quick start
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+
+# secrets — never committed (see .gitignore)
+cp .env.example .env   # HOLMES_PHONE, HOLMES_PASSWORD
+# or: export HOLMES_PHONE=... HOLMES_PASSWORD=...
+
+# read-only discovery (logs in, checks session, lists seats — no booking)
+holmes-place discover --branch 205 --lesson 123 --date 2026/09/10 --time 18:00
+
+# dry-run booking (validates, does not send register)
+holmes-place book --branch 205 --lesson 123 --date 2026/09/10 --time 18:00 --seat 12 --dry-run
+
+# real booking with safeguards (single stream, rate-limited, idempotent)
+holmes-place book --branch 205 --lesson 123 --date 2026/09/10 --time 18:00 --seat 12
+```
+
+## Safeguards
+
+- Secrets from env / `.env` file only — never committed; cookies redacted in logs.
+- `Asia/Jerusalem` timezone everywhere; server clock compared via `Date` header.
+- Single attempt stream per member (file lock); 1 req/s only inside a short opening window.
+- Idempotency: `already registered` is success, not error.
+- Allow-list: branch/lesson must be explicitly passed.
+- Dry-run / list mode, cancel path, kill switch (`--kill-switch` or `HOLMES_KILL_SWITCH=1`).
+- Low frequency + conservative retry/backoff for network errors.
+
+## Terms
+
+Verify Holmes Place / Fizikal terms and obtain permission before unattended automation.
+
+## Development
+
+```bash
+pytest
+mypy holmes_place
+```

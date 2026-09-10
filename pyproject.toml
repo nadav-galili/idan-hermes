@@ -1,0 +1,44 @@
+[project]
+name = "holmes-place-booking"
+version = "0.1.0"
+description = "Holmes Place Israel class-registration client — discovery + booking around api.php with safeguards"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31.0",
+    "python-dateutil>=2.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "mypy>=1.0",
+    "types-requests",
+    "types-python-dateutil",
+    "httpretty",
+]
+
+[project.scripts]
+holmes-place = "holmes_place.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["holmes_place"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["holmes_place"]
