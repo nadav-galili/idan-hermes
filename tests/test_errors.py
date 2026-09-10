@@ -40,3 +40,18 @@ def test_redact_masks_secrets():
     assert "phone=***" in r
     assert "password=***" in r
     assert "branchID=205" in r  # non-secret stays
+
+
+def test_redact_masks_cookies():
+    s = "Cookie: PHPSESSID=abc123; other=1\nSet-Cookie: sessionid=xyz; Path=/"
+    r = redact(s)
+    assert "abc123" not in r
+    assert "xyz" not in r
+    assert "Cookie: ***" in r
+    assert "Set-Cookie: ***" in r
+
+
+def test_redact_masks_sessionid_in_body():
+    s = "foo PHPSESSID=abcdef&bar=1"
+    r = redact(s)
+    assert "abcdef" not in r

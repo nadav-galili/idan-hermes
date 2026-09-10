@@ -35,7 +35,11 @@ class HolmesPlaceClient:
         headers = {"content-type": "application/x-www-form-urlencoded; charset=UTF-8"}
         logger.debug("POST %s data=%s", url, redact(data))
         resp = self.session.request("POST", url, data=data, headers=headers, timeout=15)
-        logger.debug("resp %s %s body=%s", resp.status_code, url, redact(resp.text[:2000]))
+        # redact body + headers (cookies leak via Set-Cookie / body dumps)
+        redacted_headers = redact(str(dict(resp.headers)))
+        logger.debug(
+            "resp %s %s headers=%s body=%s", resp.status_code, url, redacted_headers, redact(resp.text[:2000])
+        )
         # JSON error mapping before raise_for_status so typed errors surface
         try:
             body: Any = resp.json()

@@ -115,3 +115,39 @@ def test_book_single_stream_lock_blocks_second_stream():
                     assert False, "should have raised"
             except RuntimeError as e:
                 assert "another booking" in str(e)
+
+
+def test_member_lock_path_is_per_member():
+    from holmes_place.booking import member_lock_path
+
+    a = member_lock_path("0541234567")
+    b = member_lock_path("0549999999")
+    assert a != b
+    assert "0541234567" in str(a)
+    assert a.parent == b.parent
+
+
+def test_book_uses_per_member_lock(monkeypatch):
+    from holmes_place.booking import book, member_lock_path
+
+    c = _client_with_mocks()
+    c.get_available_seats = MagicMock(return_value=[1])  # type: ignore[method-assign]
+    c.register_with_seat = MagicMock(return_value=MagicMock())  # type: ignore[method-assign]
+    # patch drift + sleep + lock to capture lock path
+    with patch("holmes_place.booking.check_clock_drift", return_value=None):
+        with patch("holmes_place.booking.time.sleep"):
+            with patch("holmes_place.booking.single_stream_lock") as mock_lock:
+                mock_lock.return_value.__enter__ = MagicMock(return_value=None)
+                mock_lock.return_value.__exit__ = MagicMock(return_value=False)
+                res = book(
+                    c,
+                    LessonKey(branch_id="205", lesson_id="123", date="2026/09/10", time="18:00", instructor_id="7"),
+                    seat_preferences=[1],
+                    max_wait_s=2,
+                    poll_interval_s=0,
+                    member_id="0541234567",
+                )
+                assert res.status == "booked"
+                # lock was called with per-member path
+                called_path = mock_lock.call_args[0][0]
+                assert called_path == member_lock_path("0541234567")

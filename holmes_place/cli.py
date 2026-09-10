@@ -143,6 +143,7 @@ def main(argv: list[str] | None = None) -> int:
                 max_wait_s=args.max_wait,
                 allow_random_fallback=not args.no_random_fallback,
                 on_status=lambda m: print(m),
+                member_id=creds.phone,
             )
             print(json.dumps({"status": res.status, "seat": res.seat, "message": res.message}, indent=2, ensure_ascii=False))
             return 0 if res.status in ("booked", "already_registered", "dry_run") else 1

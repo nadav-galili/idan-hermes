@@ -92,13 +92,16 @@ def error_from_response(error_text: str) -> HolmesPlaceError | None:
 
 
 def redact(text: str) -> str:
-    """Redact phone/password/seat-like secrets for logging."""
+    """Redact phone/password/cookies for logging."""
     if not text:
         return text
-    # phone=, password= form bodies are the main leak vector
-    for key in ("phone", "password", "birthday"):
-        # naive but effective: replace key=value up to & or end
-        import re
+    import re
 
+    for key in ("phone", "password", "birthday"):
         text = re.sub(rf"{key}=[^&\s]*", f"{key}=***", text, flags=re.IGNORECASE)
+    # cookie headers / Set-Cookie values — mask entire header value
+    text = re.sub(r"(?i)(cookie:\s*)[^\r\n]+", r"\1***", text)
+    text = re.sub(r"(?i)(set-cookie:\s*)[^\r\n]+", r"\1***", text)
+    # also mask bare session cookie patterns that sometimes appear in body dumps
+    text = re.sub(r"(?i)(PHPSESSID|sessionid)=[^&\s;]+", r"\1=***", text)
     return text

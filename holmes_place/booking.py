@@ -29,14 +29,24 @@ from holmes_place.errors import AlreadyRegisteredError, BikeOccupiedError, Lesso
 
 logger = logging.getLogger(__name__)
 
-LOCK_PATH = Path("/tmp/holmes-place-booking.lock")
+LOCK_DIR = Path("/tmp")
+DEFAULT_LOCK_PATH = LOCK_DIR / "holmes-place-booking.lock"
+
+
+def member_lock_path(member_id: str) -> Path:
+    """Per-member lock file — avoids cross-member serialization and respects (MultipleDevices) safeguard."""
+    safe = "".join(c if c.isalnum() else "_" for c in member_id.strip())
+    if not safe:
+        return DEFAULT_LOCK_PATH
+    return LOCK_DIR / f"holmes-place-booking-{safe}.lock"
 
 
 @contextmanager
-def single_stream_lock(lock_path: Path = LOCK_PATH):  # type: ignore[no-untyped-def]
-    """One booking stream per member — prevents (32) multiple-devices race.
+def single_stream_lock(lock_path: Path = DEFAULT_LOCK_PATH):  # type: ignore[no-untyped-def]
+    """One booking stream per member — prevents MultipleDevices race (hebrew substring) and (32) AlreadyRegistered idempotency path.
 
-    Uses fcntl flock where available; no-op on platforms without it.
+    Uses fcntl flock where available; on platforms without fcntl, logs and proceeds
+    with a warning that the safeguard is degraded (caller should ensure single stream externally).
     """
     try:
         import fcntl  # type: ignore[import-not-found]
@@ -57,7 +67,7 @@ def single_stream_lock(lock_path: Path = LOCK_PATH):  # type: ignore[no-untyped-
                 except Exception:
                     pass
     except ImportError:
-        # Windows / no fcntl — best-effort yield without lock
+        logger.warning("fcntl unavailable — single-stream lock degraded; ensure single stream externally")
         yield
 
 
@@ -140,14 +150,17 @@ def book(
     poll_interval_s: float = 1.0,
     allow_random_fallback: bool = True,
     on_status: Callable[[str], None] | None = None,
+    member_id: str | None = None,
+    check_drift: bool = True,
 ) -> BookingResult:
     """Book with safeguards.
 
-    - Single stream (file lock)
+    - Single stream per member (file lock via member_lock_path)
+    - Clock drift check (Asia/Jerusalem) before polling — warns and adjusts max_wait slightly
     - 1 req/s max inside wait loop
     - Retries on LessonNotOpenError for up to max_wait_s
     - Falls back through seat_preferences then random available seat
-    - AlreadyRegistered -> success
+    - AlreadyRegistered (32) -> success
     """
     if dry_run:
         seats = client.get_available_seats(
@@ -160,7 +173,13 @@ def book(
 
     seat_preferences = seat_preferences or []
 
-    with single_stream_lock():
+    if check_drift:
+        drift = check_clock_drift(client)
+        if drift is not None and abs(drift.total_seconds()) > 120 and on_status:
+            on_status(f"warning: clock drift {drift.total_seconds():.0f}s — sync clock")
+
+    lock_path = member_lock_path(member_id) if member_id else DEFAULT_LOCK_PATH
+    with single_stream_lock(lock_path):
         # conservative retry for transient network errors
         last_ts: float | None = None
 
